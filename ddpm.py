@@ -1,7 +1,6 @@
 import torch
 
 
-
 class DDPM():
 
     def __init__(self, 
@@ -28,10 +27,7 @@ class DDPM():
         xt = torch.sqrt(alpha_bar) * x0 + torch.sqrt(1 - alpha_bar) * eps
         
         return xt
-    
-    def train(self,
-              x0):
-        pass
+
 
     def sample(self,
                model):
