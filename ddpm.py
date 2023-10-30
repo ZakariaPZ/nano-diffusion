@@ -11,7 +11,7 @@ class DDPM():
         self.timesteps = torch.arange(0, T)
         self.dim = dim
         self.beta = torch.linspace(0, 1, T) # linear schedule
-        self.alpha_bar = torch.cumprod(1 - self.betas, dim=0)
+        self.alpha_bar = torch.cumprod(1 - self.beta, dim=0)
 
 
     def forward_process(self,
