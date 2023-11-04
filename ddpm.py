@@ -1,6 +1,5 @@
 import torch
 
-
 class DDPM():
 
     def __init__(self, 
