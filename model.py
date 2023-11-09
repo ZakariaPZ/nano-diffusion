@@ -38,7 +38,7 @@ class DownBlock(nn.Module):
 class UpBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(UpBlock, self).__init__()
-        
+
         self.up_sample = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2)
         self.conv_block = DoubleConv(in_channels, out_channels, kernel_size=3, padding=1)
 
@@ -107,11 +107,10 @@ class MiniUNet(nn.Module):
         
         # Middle
         middle = self.middle(x2_down)
-        print('middle', middle.shape)
-        print('x2_res', x2_res.shape)
+
         # Upsample
-        x_up1 = self.up_block1(x2_res, middle)
-        x_up2 = self.up_block2(x1_res, x_up1)
+        x_up1 = self.up_block1(middle, x2_res)
+        x_up2 = self.up_block2(x_up1, x1_res)
         
         # Output
         output = self.output_layer(x_up2)
