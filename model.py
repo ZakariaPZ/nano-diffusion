@@ -25,13 +25,13 @@ class DownBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(DownBlock, self).__init__()
 
-        self.conv_block = DoubleConv(in_channels, out_channels, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv_block = DoubleConv(in_channels, out_channels, kernel_size=3, padding=1)
 
     def forward(self, x):
-        x_res = self.conv_block(x)
-        x_down = self.pool(x_res)
-        return x_down, x_res
+        x = self.pool(x)
+        x = self.conv_block(x)
+        return x
 
 class UpBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -88,10 +88,10 @@ class MiniUNet(nn.Module):
     def __init__(self):
         super(MiniUNet, self).__init__()
 
-        self.down_block1 = DownBlock(3, 64)
+        self.down_block1 = DoubleConv(3, 64)
         self.down_block2 = DownBlock(64, 128)
 
-        self.middle = DoubleConv(128, 256)  
+        self.middle = DownBlock(128, 256)
         
         self.up_block1 = UpBlock(256, 128)
         self.up_block2 = UpBlock(128, 64)
@@ -100,24 +100,18 @@ class MiniUNet(nn.Module):
 
     def forward(self, x):
         # Downsample
-        x1_down, x1_res = self.down_block1(x)
-        x2_down, x2_res = self.down_block2(x1_down)
+        down1 = self.down_block1(x)
+        down2 = self.down_block2(down1)
         
         # Middle
-        middle = self.middle(x2_down)
+        middle = self.middle(down2)
 
         # Upsample
-        x_up1 = self.up_block1(middle, x2_res)
-        x_up2 = self.up_block2(x_up1, x1_res)
+        up1 = self.up_block1(middle, down2)
+        up2 = self.up_block2(up1, down1)
         
         # Output
-        output = self.output_layer(x_up2)
+        output = self.output_layer(up2)
         
         return output
 
-# Example usage:
-# Create a MiniUNet model with two downsampling and two upsampling blocks
-# model = MiniUNet(in_channels=3, out_channels=1)
-
-# Print the model architecture
-# print(model)
