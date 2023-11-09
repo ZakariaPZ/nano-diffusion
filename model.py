@@ -31,9 +31,9 @@ class DownBlock(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
     def forward(self, x):
-        x = self.conv_block(x)
-        x_pooled = self.pool(x)
-        return x, x_pooled
+        x_res = self.conv_block(x)
+        x_down = self.pool(x_res)
+        return x_down
 
 class UpBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -45,9 +45,7 @@ class UpBlock(nn.Module):
         )
 
     def forward(self, x_up, x_res):
-        print('x_up', x_up.shape)   
         x_up = self.up_sample(x_up)
-        print('x_up', x_up.shape)
         x = torch.cat((x_up, x_res), dim=1)
         x = self.conv_block(x)
         return x
@@ -89,18 +87,20 @@ class PositionalEmbedding(nn.Module):
     def forward(self, x):
         return self.pos_encodings[:x.size()[1], :] # requires grad false? 
     
+
 class MiniUNet(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self):
         super(MiniUNet, self).__init__()
 
-        self.down_block1 = DownBlock(in_channels, 64)
+        self.down_block1 = DownBlock(3, 64)
         self.down_block2 = DownBlock(64, 128)
-        self.middle = DownBlock(128, 256)  # Using DownBlock for the middle layer
+
+        self.middle = DoubleConv(128, 256)  
         
         self.up_block1 = UpBlock(384, 128)
         self.up_block2 = UpBlock(192, 64)
         
-        self.output_layer = nn.Conv2d(64, out_channels, kernel_size=1)
+        self.output_layer = nn.Conv2d(64, 3, kernel_size=1)
 
     def forward(self, x):
         # Downsample
