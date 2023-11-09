@@ -104,15 +104,15 @@ class MiniUNet(nn.Module):
 
     def forward(self, x):
         # Downsample
-        x1, x1_pooled = self.down_block1(x)
-        x2, x2_pooled = self.down_block2(x1_pooled)
+        x1_down, x1_res = self.down_block1(x)
+        x2_down, x2_res = self.down_block2(x1_down)
         
         # Middle
-        middle, _ = self.middle(x2_pooled)
+        middle, _ = self.middle(x2_down)
         
         # Upsample
-        x_up1 = self.up_block1(x2, middle)
-        x_up2 = self.up_block2(x1, x_up1)
+        x_up1 = self.up_block1(x2_res, middle)
+        x_up2 = self.up_block2(x1_res, x_up1)
         
         # Output
         output = self.output_layer(x_up2)
