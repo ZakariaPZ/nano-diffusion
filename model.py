@@ -40,9 +40,7 @@ class UpBlock(nn.Module):
         super(UpBlock, self).__init__()
         
         self.up_sample = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2)
-        self.conv_block = nn.Sequential(
-            DoubleConv(in_channels, out_channels, kernel_size=3, padding=1),
-        )
+        self.conv_block = DoubleConv(in_channels, out_channels, kernel_size=3, padding=1)
 
     def forward(self, x_up, x_res):
         x_up = self.up_sample(x_up)
