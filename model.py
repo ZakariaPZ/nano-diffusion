@@ -22,10 +22,13 @@ class DoubleConv(nn.Module):
         return self.double_conv(x)
 
 class DownBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, 
+                 in_channels, 
+                 out_channels,
+                 input_layer=False):
         super(DownBlock, self).__init__()
-
-        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2) if not input_layer else nn.Identity()
         self.conv_block = DoubleConv(in_channels, out_channels, kernel_size=3, padding=1)
 
     def forward(self, x):
@@ -34,13 +37,21 @@ class DownBlock(nn.Module):
         return x
 
 class UpBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, 
+                 in_channels, 
+                 out_channels,
+                 t_dim=None):
         super(UpBlock, self).__init__()
 
         self.up_sample = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2)
         self.conv_block = DoubleConv(in_channels, out_channels, kernel_size=3, padding=1)
 
-    def forward(self, x_up, x_res):
+        if t_dim:
+            self.t_embedding = nn.Sequential(nn.Linear(t_dim, in_channels), nn.ReLU(inplace=True))
+
+    def forward(self, x_up, x_res, t=None):
+        if t:
+            x_up = x_up + self.t_embedding(t)[..., ..., None, None]
         x_up = self.up_sample(x_up)
         x = torch.cat((x_up, x_res), dim=1)
         x = self.conv_block(x)
@@ -66,7 +77,7 @@ class PositionalEmbedding(nn.Module):
     '''
     def __init__(self,
                  d_model,
-                 timesteps=5000):
+                 timesteps=1000):
         super().__init__()
 
         self.pos_encodings = torch.zeros(timesteps, d_model)
@@ -88,7 +99,7 @@ class MiniUNet(nn.Module):
     def __init__(self):
         super(MiniUNet, self).__init__()
 
-        self.down_block1 = DoubleConv(3, 64)
+        self.down_block1 = DownBlock(3, 64, input_layer=True)
         self.down_block2 = DownBlock(64, 128)
 
         self.middle = DownBlock(128, 256)
@@ -97,6 +108,8 @@ class MiniUNet(nn.Module):
         self.up_block2 = UpBlock(128, 64)
         
         self.output_layer = nn.Conv2d(64, 3, kernel_size=1)
+
+        # t_embedding = PositionalEmbedding(64)
 
     def forward(self, x):
         # Downsample
