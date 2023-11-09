@@ -33,7 +33,7 @@ class DownBlock(nn.Module):
     def forward(self, x):
         x_res = self.conv_block(x)
         x_down = self.pool(x_res)
-        return x_down
+        return x_down, x_res
 
 class UpBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
@@ -108,7 +108,7 @@ class MiniUNet(nn.Module):
         x2_down, x2_res = self.down_block2(x1_down)
         
         # Middle
-        middle, _ = self.middle(x2_down)
+        middle = self.middle(x2_down)
         
         # Upsample
         x_up1 = self.up_block1(x2_res, middle)
