@@ -97,8 +97,8 @@ class MiniUNet(nn.Module):
 
         self.middle = DoubleConv(128, 256)  
         
-        self.up_block1 = UpBlock(384, 128)
-        self.up_block2 = UpBlock(192, 64)
+        self.up_block1 = UpBlock(256, 128)
+        self.up_block2 = UpBlock(128, 64)
         
         self.output_layer = nn.Conv2d(64, 3, kernel_size=1)
 
@@ -109,7 +109,8 @@ class MiniUNet(nn.Module):
         
         # Middle
         middle = self.middle(x2_down)
-        
+        print('middle', middle.shape)
+        print('x2_res', x2_res.shape)
         # Upsample
         x_up1 = self.up_block1(x2_res, middle)
         x_up2 = self.up_block2(x1_res, x_up1)
