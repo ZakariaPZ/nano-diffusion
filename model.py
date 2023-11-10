@@ -125,7 +125,7 @@ class MiniUNet(nn.Module):
 
         # Upsample
         up1 = self.up_block1(middle, down2, t_embedding)
-        up2 = self.up_block2(up1, down1, )
+        up2 = self.up_block2(up1, down1, t_embedding)
         
         # Output
         output = self.output_layer(up2)
