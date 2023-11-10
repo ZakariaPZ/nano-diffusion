@@ -2,6 +2,19 @@ import torch
 import torch.nn as nn
 import math
 
+# Our neural network architecture follows the backbone of PixelCNN++ [52], which is a U-Net [48]
+# based on a Wide ResNet [72]. We replaced weight normalization [49] with group normalization [66]
+# to make the implementation simpler. Our 32 × 32 models use four feature map resolutions (32 × 32
+# to 4 × 4), and our 256 × 256 models use six. All models have two convolutional residual blocks
+# per resolution level and self-attention blocks at the 16 × 16 resolution between the convolutional
+# blocks [6]. Diffusion time t is specified by adding the Transformer sinusoidal position embedding [60]
+# into each residual block.
+
+# For now, the UNet is the basic version from https://arxiv.org/abs/1505.04597 with sinusoidal pos. embeddings
+# TODO: add wide ResNet, self-attention, group normalization/weight normalization 
+# TODO: add text conditioning 
+
+
 class DoubleConv(nn.Module):
     def __init__(self, 
                  in_channels, 
@@ -57,51 +70,38 @@ class UpBlock(nn.Module):
         x = self.conv_block(x)
         return x
     
-# Our neural network architecture follows the backbone of PixelCNN++ [52], which is a U-Net [48]
-# based on a Wide ResNet [72]. We replaced weight normalization [49] with group normalization [66]
-# to make the implementation simpler. Our 32 × 32 models use four feature map resolutions (32 × 32
-# to 4 × 4), and our 256 × 256 models use six. All models have two convolutional residual blocks
-# per resolution level and self-attention blocks at the 16 × 16 resolution between the convolutional
-# blocks [6]. Diffusion time t is specified by adding the Transformer sinusoidal position embedding [60]
-# into each residual block.
-
-# For now, the UNet is the basic version from https://arxiv.org/abs/1505.04597 with sinusoidal pos. embeddings
-# TODO: add wide ResNet, self-attention, group normalization/weight normalization 
-# TODO: add text conditioning 
-
-
-class PositionalEmbedding(nn.Module):
+class SinusoidalTimeEmbedding(nn.Module):
     '''
     PE_(pos, 2i) = sin(pos/10000^(2i/d_model))
     PE_(pos, 2i+1) = cos(pos/10000^(2i/d_model))
     '''
     def __init__(self,
                  t_dim,
-                 timesteps=1000):
+                 T=1000):
         super().__init__()
 
-        self.pos_encodings = torch.zeros(timesteps, t_dim)
-        positions = torch.arange(timesteps).unsqueeze(-1)
+        self.time_encodings = torch.zeros(timesteps, t_dim)
+        timesteps = torch.arange(T).unsqueeze(-1)
 
         # Use log for numerical stability
         denom = torch.exp(math.log(10000) * (torch.arange(0, t_dim, 2) / t_dim)).unsqueeze(0) 
 
-        self.pos_encodings[:, ::2] = torch.sin(positions/denom) # multiplication better?
-        self.pos_encodings[:, 1::2] = torch.cos(positions/denom)
+        self.time_encodings[:, ::2] = torch.sin(positions/denom) # multiplication better?
+        self.time_encodings[:, 1::2] = torch.cos(positions/denom)
 
-        self.pos_encodings.requires_grad = False
+        self.time_encodings.requires_grad = False
 
-    def forward(self, x):
-        return self.pos_encodings[:x.size()[1], :] # requires grad false? 
+    def forward(self, t):
+        return self.time_encodings[t, :] # requires grad false? 
     
 
 class MiniUNet(nn.Module):
     def __init__(self,
                  t_dim = 64,
-                 timesteps=1000):
+                 T=1000):
         super(MiniUNet, self).__init__()
 
-        self.t_embeddings = PositionalEmbedding(t_dim=t_dim, timesteps=timesteps)
+        self.t_embeddings = SinusoidalTimeEmbedding(t_dim=t_dim, T=T)
 
         # UNet architecture
         self.down_block1 = DownBlock(3, 64, input_layer=True)
