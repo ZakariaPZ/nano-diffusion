@@ -9,7 +9,10 @@ class DDPM():
         self.T = T 
         self.timesteps = torch.arange(0, T)
         self.dim = dim
-        self.beta = torch.linspace(0, 1, T) # linear schedule
+
+        beta_start = 0.0001
+        beta_end = 0.02
+        self.beta = torch.linspace(beta_start, beta_end, T) # linear schedule
         self.alpha_bar = torch.cumprod(1 - self.beta, dim=0)
 
 
@@ -33,6 +36,7 @@ class DDPM():
         '''
         DDPM reverse process. Predict noise in 
         '''
+        model.eval()
         # Sample noise
         xt = torch.randn((self.dim, self.dim))
 
