@@ -63,8 +63,8 @@ class UpBlock(nn.Module):
             self.t_embedding = nn.Sequential(nn.Linear(t_dim, in_channels), nn.ReLU(inplace=True))
 
     def forward(self, x_up, x_res, t=None):
-        if t:
-            x_up = x_up + self.t_embedding(t)[..., ..., None, None]
+        if t is not None:
+            x_up = x_up + self.t_embedding(t)[..., None, None]
         x_up = self.up_sample(x_up)
         x = torch.cat((x_up, x_res), dim=1)
         x = self.conv_block(x)
@@ -80,7 +80,7 @@ class SinusoidalTimeEmbedding(nn.Module):
                  T=1000):
         super().__init__()
 
-        self.time_encodings = torch.zeros(timesteps, t_dim)
+        self.time_encodings = torch.zeros(T, t_dim)
         timesteps = torch.arange(T).unsqueeze(-1)
 
         # Use log for numerical stability
