@@ -76,15 +76,15 @@ class PositionalEmbedding(nn.Module):
     PE_(pos, 2i+1) = cos(pos/10000^(2i/d_model))
     '''
     def __init__(self,
-                 d_model,
+                 t_dim,
                  timesteps=1000):
         super().__init__()
 
-        self.pos_encodings = torch.zeros(timesteps, d_model)
+        self.pos_encodings = torch.zeros(timesteps, t_dim)
         positions = torch.arange(timesteps).unsqueeze(-1)
 
         # Use log for numerical stability
-        denom = torch.exp(math.log(10000) * (torch.arange(0, d_model, 2) / d_model)).unsqueeze(0) 
+        denom = torch.exp(math.log(10000) * (torch.arange(0, t_dim, 2) / t_dim)).unsqueeze(0) 
 
         self.pos_encodings[:, ::2] = torch.sin(positions/denom) # multiplication better?
         self.pos_encodings[:, 1::2] = torch.cos(positions/denom)
@@ -96,22 +96,26 @@ class PositionalEmbedding(nn.Module):
     
 
 class MiniUNet(nn.Module):
-    def __init__(self):
+    def __init__(self,
+                 t_dim = 64,
+                 timesteps=1000):
         super(MiniUNet, self).__init__()
 
+        self.t_embeddings = PositionalEmbedding(t_dim=t_dim, timesteps=timesteps)
+
+        # UNet architecture
         self.down_block1 = DownBlock(3, 64, input_layer=True)
         self.down_block2 = DownBlock(64, 128)
 
         self.middle = DownBlock(128, 256)
         
-        self.up_block1 = UpBlock(256, 128)
-        self.up_block2 = UpBlock(128, 64)
+        self.up_block1 = UpBlock(256, 128, t_dim=t_dim)
+        self.up_block2 = UpBlock(128, 64, t_dim=t_dim)
         
         self.output_layer = nn.Conv2d(64, 3, kernel_size=1)
 
-        # t_embedding = PositionalEmbedding(64)
-
-    def forward(self, x):
+    def forward(self, x, t):
+        t_embedding = self.t_embeddings(t)
         # Downsample
         down1 = self.down_block1(x)
         down2 = self.down_block2(down1)
@@ -120,8 +124,8 @@ class MiniUNet(nn.Module):
         middle = self.middle(down2)
 
         # Upsample
-        up1 = self.up_block1(middle, down2)
-        up2 = self.up_block2(up1, down1)
+        up1 = self.up_block1(middle, down2, t_embedding)
+        up2 = self.up_block2(up1, down1, )
         
         # Output
         output = self.output_layer(up2)
