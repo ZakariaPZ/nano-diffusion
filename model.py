@@ -86,8 +86,8 @@ class SinusoidalTimeEmbedding(nn.Module):
         # Use log for numerical stability
         denom = torch.exp(math.log(10000) * (torch.arange(0, t_dim, 2) / t_dim)).unsqueeze(0) 
 
-        self.time_encodings[:, ::2] = torch.sin(positions/denom) # multiplication better?
-        self.time_encodings[:, 1::2] = torch.cos(positions/denom)
+        self.time_encodings[:, ::2] = torch.sin(timesteps/denom) # multiplication better?
+        self.time_encodings[:, 1::2] = torch.cos(timesteps/denom)
 
         self.time_encodings.requires_grad = False
 
