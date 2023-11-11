@@ -1,40 +1,19 @@
 import torch
 from torch import nn
 
-class Schedules:
-    pass
-
-class DDPM():
-
-    def __init__(self, 
-                 T,
-                 dim) -> None:
-
-        self.T = T 
-        self.beta = self.get_linear_schedule(T)
-        self.alpha_bar = torch.cumprod(1 - self.beta, dim=0)
+class Scheduler:
+    def __init__(self,
+                 T):
         
-        self.loss = nn.MSELoss()
+        self.T = T 
+        self.beta = self.linear_schedule(T)
+        self.alpha_bar = torch.cumprod(1 - self.beta, dim=0)
 
-    def get_linear_schedule(self, T):
+    def linear_schedule(self, T):
     
         beta_start = 0.0001
         beta_end = 0.02
         return torch.linspace(beta_start, beta_end, T) # linear schedule
-
-    def get_batch(self, shape):
-        # Sample noise
-        batch_size = shape[0]
-
-        sampled_timesteps = torch.randint(0, self.T, (batch_size,))
-        t = self.ddpm.timesteps[sampled_timesteps]
-        epsilon = torch.randn_like(shape)
-
-        # Unsqueeze to match dimensions of epsilon for broadcasting
-        t = t[..., None, None, None]
-        alpha_bar = alpha_bar[..., None, None, None]
-
-        return t, alpha_bar, epsilon
 
     def forward_process(self,
                         x0,
@@ -49,6 +28,16 @@ class DDPM():
         xt = torch.sqrt(alpha_bar_t) * x0 + torch.sqrt(1 - alpha_bar_t) * eps
         
         return xt
+    
+
+class DDPM():
+
+    def __init__(self, 
+                 T,
+                 dim) -> None:
+
+        self.scheduler = Scheduler(T)
+        self.loss = nn.MSELoss()
 
     def sample(self,
                model,
@@ -60,11 +49,11 @@ class DDPM():
         # Sample noise
         xt = torch.randn(shape)
 
-        for t in torch.arange(0, self.T):
+        for t in torch.arange(0, self.scheduler.T):
             t_batch = t.repeat(shape[0])
-            alpha_t = 1 - self.beta[t_batch][..., None, None, None]
-            alpha_bar = self.alpha_bar[t_batch][..., None, None, None]
-            sigma_t = torch.sqrt(self.beta[t_batch])[..., None, None, None]
+            alpha_t = 1 - self.scheduler.beta[t_batch][..., None, None, None]
+            alpha_bar = self.scheduler.alpha_bar[t_batch][..., None, None, None]
+            sigma_t = torch.sqrt(self.scheduler.beta[t_batch])[..., None, None, None]
 
             if t > 1:
                 z = torch.randn(shape)
@@ -84,8 +73,16 @@ class DDPM():
         Training algorithm for DDPM. Algorithm 1 in the paper.
         '''
         model.train()
+        batch_size = shape[0]
 
-        t, alpha_bar, epsilon = self.get_batch_data(shape)
+        t = torch.randint(0, self.scheduler.T, (batch_size,))
+        alpha_bar = self.scheduler.alpha_bar[t]
+        epsilon = torch.randn_like(shape)
+
+        # Unsqueeze to match dimensions of epsilon for broadcasting
+        t = t[..., None, None, None]
+        alpha_bar = alpha_bar[..., None, None, None]
+
         xt = torch.sqrt(alpha_bar) * x0 + torch.sqrt(1 - alpha_bar) * epsilon
 
         loss = self.loss(epsilon, model(xt, t))
