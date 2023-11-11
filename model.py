@@ -11,7 +11,7 @@ import math
 # into each residual block.
 
 # For now, the UNet is the basic version from https://arxiv.org/abs/1505.04597 with sinusoidal pos. embeddings
-# TODO: add wide ResNet, self-attention, group normalization/weight normalization 
+# TODO: add dropout (requires model.train), wide ResNet, self-attention, group normalization/weight normalization
 # TODO: add text conditioning 
 
 
@@ -77,11 +77,11 @@ class SinusoidalTimeEmbedding(nn.Module):
     '''
     def __init__(self,
                  t_dim,
-                 T=1000):
+                 n_timesteps=1000):
         super().__init__()
 
-        self.time_encodings = torch.zeros(T, t_dim)
-        timesteps = torch.arange(T).unsqueeze(-1)
+        self.time_encodings = torch.zeros(n_timesteps, t_dim)
+        timesteps = torch.arange(n_timesteps).unsqueeze(-1)
 
         # Use log for numerical stability
         denom = torch.exp(math.log(10000) * (torch.arange(0, t_dim, 2) / t_dim)).unsqueeze(0) 
@@ -98,10 +98,10 @@ class SinusoidalTimeEmbedding(nn.Module):
 class MiniUNet(nn.Module):
     def __init__(self,
                  t_dim = 64,
-                 T=1000):
+                 n_timesteps=1000):
         super(MiniUNet, self).__init__()
 
-        self.t_embeddings = SinusoidalTimeEmbedding(t_dim=t_dim, T=T)
+        self.t_embeddings = SinusoidalTimeEmbedding(t_dim=t_dim, n_timesteps=n_timesteps)
 
         # UNet architecture
         self.down_block1 = DownBlock(3, 64, input_layer=True)
