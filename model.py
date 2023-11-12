@@ -80,7 +80,7 @@ class SinusoidalTimeEmbedding(nn.Module):
                  n_timesteps=1000):
         super().__init__()
 
-        self.time_encodings = torch.zeros(n_timesteps, t_dim)
+        self.register_buffer('time_encodings', torch.zeros(n_timesteps, t_dim))
         timesteps = torch.arange(n_timesteps).unsqueeze(-1)
 
         # Use log for numerical stability
@@ -92,7 +92,8 @@ class SinusoidalTimeEmbedding(nn.Module):
         self.time_encodings.requires_grad = False
 
     def forward(self, t):
-        return self.time_encodings[t, :] # requires grad false? 
+
+        return self.time_encodings[t-1, :] # requires grad false? 
     
 
 class MiniUNet(nn.Module):
