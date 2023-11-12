@@ -1,54 +1,48 @@
 import torch
 import torch.nn as nn 
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+from ddpm import DDPM, Scheduler
+from model import MiniUNet
 
+def train(num_epochs,
+          batch_size,
+          n_timesteps,
+          device):
 
-class Trainer:
+    model = MiniUNet(n_timesteps=n_timesteps).to(device)
+    scheduler = Scheduler(n_timesteps=n_timesteps).to(device)
+    ddpm = DDPM(scheduler=scheduler).to(device)
 
-    def __init__(self,
-                 ddpm,
-                 train_loader) -> None:
-        self.ddpm = ddpm
-        self.train_loader = train_loader
-        self.loss = nn.MSELoss()
+    # Define the transformations to be applied to the images
+    transform = transforms.Compose([
+        transforms.ToTensor(),  # Convert the image to a PyTorch tensor
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize the pixel values
+    ])
 
-    def get_batch_data(self,
-                       batch_size,
-                       num_channels=3):
-        sampled_timesteps = torch.randint(0, self.ddpm.T, (batch_size,))
-        t = self.ddpm.timesteps[sampled_timesteps]
-        alpha_bar = self.ddpm.alpha_bar[sampled_timesteps]
+    # Download the CIFAR-10 training dataset and apply the transformations
+    train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
 
-        epsilon = torch.randn((batch_size, num_channels, self.ddpm.dim, self.ddpm.dim))
+    # Create a DataLoader to efficiently load and iterate through the dataset
+    train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+   
+    model.train() 
+    for epoch in range(num_epochs):
+        loss = 0 
+        for batch_idx, (x0, _) in enumerate(train_loader):
+            loss += ddpm.train(x0.to(device), model, x0.shape)
+        
+        print(f'Loss in epoch {epoch+1}: {loss}')
 
-        # Unsqueeze to match dimensions of epsilon for broadcasting
-        t = t[..., None, None, None]
-        alpha_bar = alpha_bar[..., None, None, None]
-
-        return t, alpha_bar, epsilon
+    # save model 
+    # model.eval()
+    # validation 
     
-    def run_epoch(self,
-              batch_size,
-              num_steps,
-              x0,
-              model):
-        
+if __name__ == '__main__':
 
-        for batch_id, (x0, _) in enumerate(self.train_loader):
-            t, alpha_bar, epsilon = self.get_batch_data(batch_size, num_channels=x0.shape[1])
-            xt = torch.sqrt(alpha_bar) * x0 + torch.sqrt(1 - alpha_bar) * epsilon
+    num_epochs = 2
+    batch_size = 64    
+    n_timesteps = 2
+    device = 'cuda'
 
-            loss = self.loss(epsilon, model(xt))
-            loss.backward()
-            return loss.item()
-
-        loss = self.loss(epsilon, model(xt))
-        loss.backward()
-        return loss.item()
-
-    def train(self,
-              num_steps,
-              model):
-        
-        model.train() # because of dropout
-        for i in range(num_steps):
-            break
+    train(num_epochs, batch_size, n_timesteps, device)
