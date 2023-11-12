@@ -4,7 +4,7 @@ from torch import nn
 class Scheduler(nn.Module):
     def __init__(self,
                  n_timesteps):
-        
+        super(Scheduler, self).__init__()
         self.n_timesteps = n_timesteps
         self.beta = self.linear_schedule()
         self.alpha_bar = torch.cumprod(1 - self.beta, dim=0)
@@ -34,6 +34,7 @@ class DDPM(nn.Module):
 
     def __init__(self, 
                  scheduler) -> None:
+        super(DDPM, self).__init__()
 
         self.scheduler = scheduler
         self.loss = nn.MSELoss()
