@@ -37,7 +37,7 @@ def train(num_epochs,
             for batch_idx, (x0, _) in enumerate(t_bar):
 
 
-                loss += ddpm.train(x0.to(device), model, batch_size, x0.shape[1:])
+                loss += ddpm.train(x0.to(device), model, x0.shape[0], x0.shape[1:])
             
             print(f'Loss in epoch {epoch+1}: {loss}')
 
