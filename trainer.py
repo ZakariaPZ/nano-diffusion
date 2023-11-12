@@ -30,19 +30,21 @@ def train(num_epochs,
     for epoch in range(num_epochs):
         loss = 0 
         for batch_idx, (x0, _) in enumerate(train_loader):
-            loss += ddpm.train(x0.to(device), model, x0.shape)
+            loss += ddpm.train(x0.to(device), model, batch_size, x0.shape[1:])
         
         print(f'Loss in epoch {epoch+1}: {loss}')
 
-    # save model 
+    torch.save(model, 'cifar10_ddpm.pth')
+
+    # save model with custom path
     # model.eval()
     # validation 
     
 if __name__ == '__main__':
 
-    num_epochs = 2
+    num_epochs = 10
     batch_size = 64    
-    n_timesteps = 2
+    n_timesteps = 1000
     device = 'cuda'
 
     train(num_epochs, batch_size, n_timesteps, device)

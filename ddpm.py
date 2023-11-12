@@ -5,9 +5,10 @@ class Scheduler(nn.Module):
     def __init__(self,
                  n_timesteps):
         super(Scheduler, self).__init__()
+        # TODO: Register class members to buffer to make device transfer easier
         self.n_timesteps = n_timesteps
-        self.beta = self.linear_schedule()
-        self.alpha_bar = torch.cumprod(1 - self.beta, dim=0)
+        self.register_buffer('beta', self.linear_schedule())
+        self.register_buffer('alpha_bar', torch.cumprod(1 - self.beta, dim=0))
 
     def linear_schedule(self):
     
@@ -51,8 +52,8 @@ class DDPM(nn.Module):
         # Sample noise
         xt = torch.randn(n_samples, *shape).to(device)
 
-        for t in torch.arange(0, self.scheduler.T):
-            t_batch = t.repeat(n_samples).to(device)
+        for t in torch.arange(0, self.scheduler.n_timesteps):
+            t_batch = t.repeat(n_samples)
             alpha_t = 1 - self.scheduler.beta[t_batch][..., None, None, None]
             alpha_bar = self.scheduler.alpha_bar[t_batch][..., None, None, None]
             sigma_t = torch.sqrt(self.scheduler.beta[t_batch])[..., None, None, None]
@@ -77,16 +78,14 @@ class DDPM(nn.Module):
         '''
         model.train()
 
-        t = torch.randint(0, self.scheduler.n_timesteps, (batch_size,)).to(x0.device)
+        t = torch.randint(0, self.scheduler.n_timesteps, (batch_size,))
         alpha_bar = self.scheduler.alpha_bar[t]
         epsilon = torch.randn(batch_size, *shape).to(x0.device)
 
         # Unsqueeze to match dimensions of epsilon for broadcasting
-        t = t[..., None, None, None]
         alpha_bar = alpha_bar[..., None, None, None]
 
         xt = torch.sqrt(alpha_bar) * x0 + torch.sqrt(1 - alpha_bar) * epsilon
-
         loss = self.loss(epsilon, model(xt, t))
         loss.backward()
 
