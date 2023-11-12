@@ -1,9 +1,11 @@
 import torch
-import torch.nn as nn 
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+
 from ddpm import DDPM, Scheduler
 from model import MiniUNet
+
+from tqdm import tqdm
 
 def train(num_epochs,
           batch_size,
@@ -27,12 +29,17 @@ def train(num_epochs,
     train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
    
     model.train() 
+
+
     for epoch in range(num_epochs):
         loss = 0 
-        for batch_idx, (x0, _) in enumerate(train_loader):
-            loss += ddpm.train(x0.to(device), model, batch_size, x0.shape[1:])
-        
-        print(f'Loss in epoch {epoch+1}: {loss}')
+        with tqdm(train_loader, desc=f'Epoch {epoch + 1}/{num_epochs}', unit='batch') as t_bar:
+            for batch_idx, (x0, _) in enumerate(t_bar):
+
+
+                loss += ddpm.train(x0.to(device), model, batch_size, x0.shape[1:])
+            
+            print(f'Loss in epoch {epoch+1}: {loss}')
 
     torch.save(model, 'cifar10_ddpm.pth')
 
