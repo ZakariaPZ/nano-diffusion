@@ -93,7 +93,7 @@ class SinusoidalTimeEmbedding(nn.Module):
 
     def forward(self, t):
 
-        return self.time_encodings[t-1, :] # requires grad false? 
+        return self.time_encodings[t, :] # requires grad false? 
     
 
 class MiniUNet(nn.Module):
