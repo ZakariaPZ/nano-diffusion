@@ -28,6 +28,8 @@ class DoubleConv(nn.Module):
             nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
             nn.ReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
             nn.ReLU(inplace=True)
         )
 
@@ -48,15 +50,16 @@ class DownBlock(nn.Module):
         x = self.pool(x)
         x = self.conv_block(x)
         return x
-
+        
 class UpBlock(nn.Module):
     def __init__(self, 
                  in_channels, 
                  out_channels,
+                 output_padding=0,
                  t_dim=None):
         super(UpBlock, self).__init__()
 
-        self.up_sample = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2)
+        self.up_sample = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2, output_padding=output_padding)
         self.conv_block = DoubleConv(in_channels, out_channels, kernel_size=3, padding=1)
 
         if t_dim:
@@ -76,7 +79,7 @@ class SinusoidalTimeEmbedding(nn.Module):
     PE_(pos, 2i+1) = cos(pos/10000^(2i/d_model))
     '''
     def __init__(self,
-                 t_dim,
+                 t_dim=64,
                  n_timesteps=1000):
         super().__init__()
 
@@ -105,31 +108,35 @@ class MiniUNet(nn.Module):
         self.t_embeddings = SinusoidalTimeEmbedding(t_dim=t_dim, n_timesteps=n_timesteps)
 
         # UNet architecture
-        self.down_block1 = DownBlock(3, 64, input_layer=True)
+        self.down_block1 = DownBlock(1, 64, input_layer=True)
         self.down_block2 = DownBlock(64, 128)
+        self.down_block3 = DownBlock(128, 256)
 
-        self.middle = DownBlock(128, 256)
-        
-        self.up_block1 = UpBlock(256, 128, t_dim=t_dim)
-        self.up_block2 = UpBlock(128, 64, t_dim=t_dim)
-        
-        self.output_layer = nn.Conv2d(64, 3, kernel_size=1)
+        self.middle = DownBlock(256, 512)
+
+        self.up_block1 = UpBlock(512, 256, output_padding=1, t_dim=t_dim)
+        self.up_block2 = UpBlock(256, 128, t_dim=t_dim)
+        self.up_block3 = UpBlock(128, 64, t_dim=t_dim)
+
+        self.output_layer = nn.Conv2d(64, 1, kernel_size=1)
 
     def forward(self, x, t):
         t_embedding = self.t_embeddings(t)
         # Downsample
         down1 = self.down_block1(x)
         down2 = self.down_block2(down1)
+        down3 = self.down_block3(down2)
         
         # Middle
-        middle = self.middle(down2)
+        middle = self.middle(down3)
 
         # Upsample
-        up1 = self.up_block1(middle, down2, t_embedding)
-        up2 = self.up_block2(up1, down1, t_embedding)
-        
+        up1 = self.up_block1(middle, down3, t_embedding)
+        up2 = self.up_block2(up1, down2, t_embedding)
+        up3 = self.up_block3(up2, down1)
+
         # Output
-        output = self.output_layer(up2)
+        output = self.output_layer(up3)
         
         return output
 

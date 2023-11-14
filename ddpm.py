@@ -34,12 +34,14 @@ class Scheduler(nn.Module):
 class DDPM(nn.Module):
 
     def __init__(self, 
-                 scheduler) -> None:
+                 scheduler,
+                 loss) -> None:
         super(DDPM, self).__init__()
 
         self.scheduler = scheduler
-        self.loss = nn.MSELoss()
+        self.loss = loss
 
+    @torch.no_grad()
     def sample(self,
                model,
                device,
@@ -52,13 +54,14 @@ class DDPM(nn.Module):
         # Sample noise
         xt = torch.randn(n_samples, *shape).to(device)
 
-        for t in torch.arange(0, self.scheduler.n_timesteps):
+        for t in torch.arange(self.scheduler.n_timesteps-1, -1, -1):
             t_batch = t.repeat(n_samples)
             alpha_t = 1 - self.scheduler.beta[t_batch][..., None, None, None]
             alpha_bar = self.scheduler.alpha_bar[t_batch][..., None, None, None]
             sigma_t = torch.sqrt(self.scheduler.beta[t_batch])[..., None, None, None]
 
-            if t > 1:
+            # Change to one line
+            if t > 0:
                 z = torch.randn(n_samples, *shape).to(device)
             else:
                 z = torch.zeros(n_samples, *shape).to(device)
@@ -66,7 +69,7 @@ class DDPM(nn.Module):
             xtm1 = 1/torch.sqrt(alpha_t) * (xt - (1-alpha_t)/torch.sqrt(1-alpha_bar) * model(xt, t_batch)) + sigma_t * z
             xt = xtm1
         
-        return xt 
+        return xt.cpu().detach()
     
     def train(self,
               x0,
@@ -80,13 +83,15 @@ class DDPM(nn.Module):
 
         t = torch.randint(0, self.scheduler.n_timesteps, (batch_size,))
         alpha_bar = self.scheduler.alpha_bar[t]
-        epsilon = torch.randn(batch_size, *shape).to(x0.device)
+        z = torch.randn(batch_size, *shape).to(x0.device)
 
         # Unsqueeze to match dimensions of epsilon for broadcasting
         alpha_bar = alpha_bar[..., None, None, None]
 
-        xt = torch.sqrt(alpha_bar) * x0 + torch.sqrt(1 - alpha_bar) * epsilon
-        loss = self.loss(epsilon, model(xt, t))
+        ## Use scheduler forward process
+        xt = torch.sqrt(alpha_bar) * x0 + torch.sqrt(1 - alpha_bar) * z
+
+        loss = self.loss(z, model(xt, t))
         loss.backward()
 
         return loss.item()
