@@ -4,7 +4,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from datasets import load_dataset 
 
-from ddpm_new import DDPM, Scheduler
+from ddpm import DDPM, Scheduler
 from model import MiniUNet
 
 from tqdm import tqdm
@@ -33,19 +33,15 @@ def train(num_epochs,
         return examples
 
     dataset = load_dataset("fashion_mnist")
-
     transformed_dataset = dataset.with_transform(do_transforms).remove_columns("label")
-    
     dataloader = DataLoader(transformed_dataset["train"], batch_size=batch_size, shuffle=True)
 
     model.train() 
     optim = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     for epoch in range(num_epochs):
-        loss = 0 
         ma_loss = 0
         with tqdm(dataloader, desc=f'Epoch {epoch + 1}/{num_epochs}', unit='batch') as t_bar:
-            num_batches = len(t_bar)
             for batch_idx, data in enumerate(t_bar):
 
                 x0 = data['pixel_values']
