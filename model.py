@@ -81,26 +81,24 @@ class SinusoidalTimeEmbedding(nn.Module):
     def __init__(self,
                  t_dim=64):
         super().__init__()
-        # Use log for numerical stability
         self.t_dim = t_dim
-        self.denom = torch.exp(math.log(10000) * (torch.arange(0, t_dim, 2) / t_dim)).unsqueeze(0) 
 
     def forward(self, t):
+        denom = torch.exp(math.log(10000) * (torch.arange(0, self.t_dim, 2) / self.t_dim)).unsqueeze(0).to(t.device)
         t = t[..., None]
         time_embeddings = torch.zeros(t.shape[0], self.t_dim)
-        time_embeddings[:, ::2] = torch.sin(t/self.denom) 
-        time_embeddings[:, 1::2] = torch.cos(t/self.denom)
+        time_embeddings[:, ::2] = torch.sin(t/denom) 
+        time_embeddings[:, 1::2] = torch.cos(t/denom)
 
         return time_embeddings.to(t.device).requires_grad_(False) 
     
 
 class MiniUNet(nn.Module):
     def __init__(self,
-                 t_dim = 64,
-                 n_timesteps=1000):
+                 t_dim = 64):
         super(MiniUNet, self).__init__()
 
-        self.t_embeddings = SinusoidalTimeEmbedding(t_dim=t_dim, n_timesteps=n_timesteps)
+        self.t_embeddings = SinusoidalTimeEmbedding(t_dim=t_dim)
 
         # UNet architecture
         self.down_block1 = DownBlock(1, 64, input_layer=True)

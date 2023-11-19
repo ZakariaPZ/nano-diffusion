@@ -1,6 +1,7 @@
 import torch
 from torchvision.utils import save_image, make_grid
-from ddpm import DDPM, Scheduler
+from ddpm import DDPM
+from schedulers import Scheduler
 
 scheduler = Scheduler(1000).to('cuda')
 ddpm = DDPM(scheduler, torch.nn.MSELoss()).to('cuda')

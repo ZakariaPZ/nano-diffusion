@@ -37,7 +37,7 @@ class DDPM(nn.Module):
             else:
                 z = torch.zeros(n_samples, *shape).to(device)
 
-            xtm1 = 1/torch.sqrt(alpha_t) * (xt - (1-alpha_t)/torch.sqrt(1-alpha_bar) * model(xt, t_batch)) + sigma_t * z
+            xtm1 = 1/torch.sqrt(alpha_t) * (xt - (1-alpha_t)/torch.sqrt(1-alpha_bar) * model(xt, t_batch.to(device))) + sigma_t * z
             xt = xtm1
         
         return xt.cpu().detach()
@@ -62,7 +62,7 @@ class DDPM(nn.Module):
         ## Use scheduler forward process
         xt = torch.sqrt(alpha_bar) * x0 + torch.sqrt(1 - alpha_bar) * z
 
-        loss = self.loss(z, model(xt, t))
+        loss = self.loss(z, model(xt, t.to(x0.device)))
         loss.backward()
 
         return loss.item()
