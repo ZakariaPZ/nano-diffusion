@@ -79,24 +79,19 @@ class SinusoidalTimeEmbedding(nn.Module):
     PE_(pos, 2i+1) = cos(pos/10000^(2i/d_model))
     '''
     def __init__(self,
-                 t_dim=64,
-                 n_timesteps=1000):
+                 t_dim=64):
         super().__init__()
-
-        self.register_buffer('time_encodings', torch.zeros(n_timesteps, t_dim))
-        timesteps = torch.arange(n_timesteps).unsqueeze(-1)
-
         # Use log for numerical stability
-        denom = torch.exp(math.log(10000) * (torch.arange(0, t_dim, 2) / t_dim)).unsqueeze(0) 
-
-        self.time_encodings[:, ::2] = torch.sin(timesteps/denom) # multiplication better?
-        self.time_encodings[:, 1::2] = torch.cos(timesteps/denom)
-
-        self.time_encodings.requires_grad = False
+        self.t_dim = t_dim
+        self.denom = torch.exp(math.log(10000) * (torch.arange(0, t_dim, 2) / t_dim)).unsqueeze(0) 
 
     def forward(self, t):
+        t = t[..., None]
+        time_embeddings = torch.zeros(t.shape[0], self.t_dim)
+        time_embeddings[:, ::2] = torch.sin(t/self.denom) 
+        time_embeddings[:, 1::2] = torch.cos(t/self.denom)
 
-        return self.time_encodings[t, :] # requires grad false? 
+        return time_embeddings.to(t.device).requires_grad_(False) 
     
 
 class MiniUNet(nn.Module):
