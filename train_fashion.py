@@ -53,7 +53,7 @@ def train(num_epochs,
                 ma_loss = (1 - (1/(batch_idx+1))) * ma_loss + (1/(batch_idx+1)) * loss
                 t_bar.set_postfix(loss=ma_loss),
             
-    torch.save(model, 'fashionmnist_ddpm.pth')
+    torch.save(model, 'ddpm_fashion.pth')
 
     # save model with custom path
     # model.eval()
