@@ -1,6 +1,6 @@
 import torch
 from torchvision.utils import save_image, make_grid
-from ddpm import DDPM
+from samplers.ddpm import DDPM
 from schedulers import Scheduler
 
 scheduler = Scheduler(1000).to('cuda')

@@ -4,7 +4,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from datasets import load_dataset 
 
-from ddpm import DDPM
+from samplers.ddpm import DDPM
 from schedulers import Scheduler
 from model import MiniUNet
 
