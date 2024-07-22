@@ -55,28 +55,42 @@ def train(num_epochs,
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     val_dataset = MyDataset(val_data, transform=transform)
-    val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    model.train() 
     optim = torch.optim.Adam(model.parameters(), lr=1e-4)
-    # scheduler = ReduceLROnPlateau(optim, 'min', factor=0.1, patience=10, verbose=True)
+    scheduler = ReduceLROnPlateau(optim, 'min', factor=0.1, patience=10, verbose=True)
 
     for epoch in range(num_epochs):
+
+        model.train() 
         ma_loss = 0
+        
         with tqdm(train_dataloader, desc=f'Epoch {epoch + 1}/{num_epochs}', unit='batch') as t_bar:
             for batch_idx, x0 in enumerate(t_bar):
 
                 optim.zero_grad()
                 loss = ddpm.train(x0.to(device), model, x0.shape[0], x0.shape[1:])
+                loss.backward()
                 optim.step()
 
-                ma_loss = (1 - (1/(batch_idx+1))) * ma_loss + (1/(batch_idx+1)) * loss
-                t_bar.set_postfix(loss=ma_loss),
+                ma_loss = (1 - (1/(batch_idx+1))) * ma_loss + (1/(batch_idx+1)) * loss.item()
+                t_bar.set_postfix(loss=ma_loss)
         
         if epoch % 20 == 0:
             torch.save(model, f'run/ddpm_fashion_{epoch + 1}.pth')
 
-        # scheduler.step(ma_loss)
+        # validation
+        model.eval()
+        val_ma_loss = 0
+        with torch.no_grad():
+            with tqdm(val_dataloader, desc=f'Epoch {epoch + 1}/{num_epochs}', unit='batch') as t_bar:
+                for batch_idx, x0 in enumerate(t_bar):
+
+                    loss = ddpm.train(x0.to(device), model, x0.shape[0], x0.shape[1:])
+                    val_ma_loss = (1 - (1/(batch_idx+1))) * val_ma_loss + (1/(batch_idx+1)) * loss.item()
+                    t_bar.set_postfix(loss=val_ma_loss)
+    
+        scheduler.step(val_ma_loss)
 
     torch.save(model, 'ddpm_fashion.pth')
     # save model with custom path

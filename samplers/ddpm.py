@@ -50,7 +50,6 @@ class DDPM(nn.Module):
         '''
         Training algorithm for DDPM. Algorithm 1 in the paper.
         '''
-        model.train()
 
         t = torch.randint(0, self.scheduler.n_timesteps, (batch_size,))
         alpha_bar = self.scheduler.alpha_bar[t]
@@ -63,7 +62,8 @@ class DDPM(nn.Module):
         xt = torch.sqrt(alpha_bar) * x0 + torch.sqrt(1 - alpha_bar) * z
 
         loss = self.loss(z, model(xt, t.to(x0.device)))
-        loss.backward()
 
-        return loss.item()
+        return loss
+    
+    
     
