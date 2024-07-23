@@ -58,7 +58,7 @@ def train(num_epochs,
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     optim = torch.optim.Adam(model.parameters(), lr=1e-4)
-    scheduler = ReduceLROnPlateau(optim, 'min', factor=0.1, patience=10, verbose=True)
+    scheduler = ReduceLROnPlateau(optim, 'min', factor=0.5, patience=25, verbose=True)
 
     for epoch in range(num_epochs):
 
@@ -77,7 +77,7 @@ def train(num_epochs,
                 t_bar.set_postfix(loss=ma_loss)
         
         if epoch % 20 == 0:
-            torch.save(model, f'run/ddpm_fashion_{epoch + 1}.pth')
+            torch.save(model.state_dict(), f'run/ddpm_fashion_{epoch + 1}.pth')
 
         # validation
         model.eval()
@@ -92,14 +92,14 @@ def train(num_epochs,
     
         scheduler.step(val_ma_loss)
 
-    torch.save(model, 'ddpm_fashion.pth')
+    torch.save(model.state_dict(), 'ddpm_fashion.pth')
     # save model with custom path
     # model.eval()
     # validation 
     
 if __name__ == '__main__':
 
-    num_epochs = 200
+    num_epochs = 500
     batch_size = 256
     n_timesteps = 1000
     device = 'cuda'

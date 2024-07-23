@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import math
+from torch.quantization import QuantStub, DeQuantStub
 
 # Our neural network architecture follows the backbone of PixelCNN++ [52], which is a U-Net [48]
 # based on a Wide ResNet [72]. We replaced weight normalization [49] with group normalization [66]
@@ -95,7 +96,8 @@ class SinusoidalTimeEmbedding(nn.Module):
 
 class MiniUNet(nn.Module):
     def __init__(self,
-                 t_dim = 64):
+                 t_dim = 64,
+                 quantize=False):
         super(MiniUNet, self).__init__()
 
         self.t_embeddings = SinusoidalTimeEmbedding(t_dim=t_dim)
@@ -112,8 +114,16 @@ class MiniUNet(nn.Module):
         self.up_block3 = UpBlock(128, 64, t_dim=t_dim)
 
         self.output_layer = nn.Conv2d(64, 1, kernel_size=1)
+        
+        if quantize:
+            self.quant = QuantStub()
+            self.dequant = DeQuantStub()
 
     def forward(self, x, t):
+
+        if hasattr(self, 'quant'):
+            x = self.quant(x)
+
         t_embedding = self.t_embeddings(t)
         # Downsample
         down1 = self.down_block1(x)
@@ -130,6 +140,8 @@ class MiniUNet(nn.Module):
 
         # Output
         output = self.output_layer(up3)
+
+        if hasattr(self, 'dequant'):
+            output = self.dequant(output)
         
         return output
-
